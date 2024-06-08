@@ -1,0 +1,183 @@
+getgenv().config = {
+    toggleKey = "V"
+}
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.ResetOnSpawn = false
+screenGui.Name = "CustomGUI"
+
+-- Create the Frame that will contain the TextBox and the tab
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0, 250, 0, 60)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -30)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black
+mainFrame.BackgroundTransparency = 1 -- Fully transparent initially
+
+-- Create the TextBox
+local textBox = Instance.new("TextBox")
+textBox.Parent = mainFrame
+textBox.Size = UDim2.new(1, 0, 0, 40)
+textBox.Position = UDim2.new(0, 0, 1, -40)
+textBox.Text = ".gg/realdhc"
+textBox.TextScaled = true
+textBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black
+textBox.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
+textBox.TextSize = 40
+textBox.BackgroundTransparency = 0
+textBox.TextColor3 = Color3.fromRGB(255, 255, 255)  -- White text
+
+-- Create a gradient for the TextBox background
+local textBoxGradient = Instance.new("UIGradient")
+textBoxGradient.Parent = textBox
+textBoxGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),  -- Black
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))  -- Black
+}
+
+-- Create the draggable tab
+local tab = Instance.new("TextButton")
+tab.Parent = mainFrame
+tab.Size = UDim2.new(1, 0, 0, 20)
+tab.Position = UDim2.new(0, 0, 0, 0)
+tab.Text = ".gg/realdhc"
+tab.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black
+tab.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
+tab.BackgroundTransparency = 0
+
+-- Create a vertical gradient for the tab background
+local tabGradient = Instance.new("UIGradient")
+tabGradient.Parent = tab
+tabGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),  -- Black
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))  -- Black
+}
+tabGradient.Rotation = 90  -- Rotate gradient to be vertical
+
+-- Make the mainFrame draggable
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+tab.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+tab.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Tween size and transparency function
+local function tweenSizeAndTransparency(element, size, transparency, duration)
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    
+    -- Tween the size
+    local sizeGoal = {Size = size}
+    local sizeTween = TweenService:Create(element, tweenInfo, sizeGoal)
+    sizeTween:Play()
+
+    -- Tween the transparency and border visibility
+    for _, descendant in ipairs(element:GetDescendants()) do
+        if descendant:IsA("TextBox") or descendant:IsA("TextButton") or descendant:IsA("Frame") then
+            local transparencyGoal = {BackgroundTransparency = transparency}
+            local transparencyTween = TweenService:Create(descendant, tweenInfo, transparencyGoal)
+            transparencyTween:Play()
+
+            if descendant:IsA("TextButton") then
+                descendant.TextTransparency = transparency
+                local borderGoal = {BorderSizePixel = transparency == 0 and 1 or 0}
+                local borderTween = TweenService:Create(descendant, tweenInfo, borderGoal)
+                borderTween:Play()
+            end
+        end
+    end
+end
+
+-- Toggle visibility with "V" key
+local isVisible = true
+local originalSize = mainFrame.Size
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode[config.toggleKey:upper()] then
+        isVisible = not isVisible
+        if isVisible then
+            tweenSizeAndTransparency(mainFrame, originalSize, 0, 0.5)
+        else
+            tweenSizeAndTransparency(mainFrame, UDim2.new(0, 0, 0, 0), 1, 0.5)
+        end
+    end
+end)
+
+-- Function to find the best matching player
+local function findBestMatchingPlayer(input)
+    local bestMatch = nil
+    local bestMatchScore = math.huge  -- Initialize with a large number
+
+    for _, player in pairs(Players:GetPlayers()) do
+        local displayName = player.DisplayName:lower()
+        local userName = player.Name:lower()
+        local inputLower = input:lower()
+
+        -- Simple substring matching
+        local displayNameDistance = string.find(displayName, inputLower) and #displayName - #inputLower or math.huge
+        local userNameDistance = string.find(userName, inputLower) and #userName - #inputLower or math.huge
+
+        local currentBest = math.min(displayNameDistance, userNameDistance)
+
+        if currentBest < bestMatchScore then
+            bestMatchScore = currentBest
+            bestMatch = player
+        end
+    end
+
+    return bestMatch
+end
+
+-- Event when the TextBox loses focus
+textBox.FocusLost:Connect(function(enterPressed)
+    local inputText = textBox.Text
+    local playerInstance = findBestMatchingPlayer(inputText)
+
+    if playerInstance then
+        local ohString1 = "VIP_CMD"
+        local ohString2 = "Summon"
+        local ohInstance3 = playerInstance
+
+        ReplicatedStorage.MainEvent:FireServer(ohString1, ohString2, ohInstance3)
+        textBox.Text = ".gg/realdhc"
+    else
+        warn("No matching player found.")
+    end
+end)
